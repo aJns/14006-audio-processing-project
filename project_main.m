@@ -7,7 +7,7 @@
 [testSample, testSampleRate] = audioread('project_test1.wav');
 
 %% Create and test Analysis-Synthesis filterbank
-mBandCount = 10;
+mBandCount = 64;
 asFilterBank = mdct_filterbank( mBandCount);
 
 %% Psychoacoustic model
@@ -17,16 +17,19 @@ frameSamples = frameLengthS*testSampleRate;
 powerOf2 = ceil(log2(frameSamples));
 frameSamples = 2^powerOf2;
 
-NDFT = floor(length(testSample)/frameSamples);
+NDFT = frameSamples;
+M = mBandCount;
+x_input_signal = testSample;
 
+%% Based on project assigment example loop
 % We now have the sub­band signals for M bands, given by the analysis
 % block
-si=0;ei=NDFT; ?%Start and End indices of input signal for each frame
+si=0;ei=NDFT; %Start and End indices of input signal for each frame
 
 win=0;
 % Main loop
 while(ei < length(x_input_signal))
-    win=win+1; ?% keep track of number of processed windows/frames
+    win=win+1; % keep track of number of processed windows/frames
     % indices of datapoints of full­band original signal
     % for the psychoacoustic model:
     time_index_fullband = si:ei;
@@ -40,8 +43,9 @@ while(ei < length(x_input_signal))
     % used, e.g. sum up how many sub­band samples were quantized with
     % nbits over all sub­bands and all processing frames.
     
-    si=si+NDFT; ?% advance 1 full frame in input data (no overlap)
+    si=si+NDFT; % advance 1 full frame in input data (no overlap)
     ei=si+NDFT-1;
 end
 % Proceed to reconstruct the signal from the quantized subband
 % signals as in exercise 4.
+%%

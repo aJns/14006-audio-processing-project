@@ -52,6 +52,7 @@ frameSamples = 2^powerOf2;
 NDFT = frameSamples;
 M = mBandCount;
 x_input_signal = testSample;
+MASK_dB = 16;
 
 
 X_dft = zeros(frameSamples,floor(length(testSample)/frameSamples));
@@ -72,31 +73,66 @@ while(ei < length(x_input_signal))
     % Subband time indices at 1/M sampling rate (for each band).
     % these sample indices need to be then quantized in this window
     time_index_subband = max((si-1)/M,1):ei/M;
-    for i = 1: mBandCount
-    end
     
     % The most important part: SPL, Masking threshold, SMR and
     % quantization here for samples, and count the number of bits
     % used, e.g. sum up how many sub­band samples were quantized with
     % nbits over all sub­bands and all processing frames.
     
-    % SPL calculation
+    % normalized SPL calculation
     freq1k = 1000;
     sinusoid1k = sin(2*pi*freq1k*linspace(0,1,NDFT));
     maxlevel1k = max(fft(sinusoid1k));
     SPL = 96 + 20*log10(abs(X_dft(1:NDFT/2,win)/maxlevel1k));
     
+    visualizeWindowIndex = 250;
     % visualize spectrum and spl
-%     if mod(win, 50) == 0
-%         figure();
-%         dftFrame = X_dft(:,win);
-%         dftFrame = dftFrame.*conj(dftFrame);
-%         dftFrame = (dftFrame/max(dftFrame)) * max(SPL);
-%         plot(dftFrame);
-%         hold on;
-%         plot(SPL+abs(min(SPL)));
-%         hold off;
-%     end
+    if win == visualizeWindowIndex
+        figure();
+        dftFrame = X_dft(:,win);
+        dftFrame = dftFrame.*conj(dftFrame);
+        dftFrame = (dftFrame/max(dftFrame)) * max(SPL);
+        plot(dftFrame);
+        hold on;
+        plot(SPL+abs(min(SPL)));
+        hold off;
+    end
+    
+    % max SPL per band (per frame)
+    dftIndexIncrease = (NDFT/2)/M;
+    dftIndices = zeros(dftIndexIncrease, M);
+    for i = 1: M
+        startIndex = 1 + (i-1)*dftIndexIncrease;
+        endIndex = startIndex + dftIndexIncrease - 1;
+        dftIndices(:,i) = startIndex:endIndex;
+    end
+    SPL_band = zeros(M, length(x_input_signal));
+    for bandIndex = 1: M
+        SPL_band(bandIndex,win) = max(0, max(SPL(dftIndices(:,bandIndex))));
+    end
+    
+    % threshold in quiet for center frequency f
+    tiqDbForBands = zeros(1, M);
+    maskThrs = zeros(M, M);
+    centerFreqs = linspace(1, testSampleRate/10^3, M);
+    for i = 1: M
+        f = centerFreqs(i);
+        tiq = 3.64 * f.^(-0.8) - 6.5*exp(-0.6*(f-3.3).^2)+(10^-3)*f.^4;
+        tiqDbForBands(i) = tiq;
+        % computing masking threshold from the SPL levels
+        maskThr_current = max( conv(SPL_band(:,win),[0.05 0.6 0.3 0.05],'same') - MASK_dB , tiq' );
+        maskThrs(i, :) = maskThr_current;
+    end
+    
+    if win == visualizeWindowIndex
+        figure(2);
+        plot(SPL_band(:,win));
+        hold on;
+        plot(tiqDbForBands);
+        plot(maskThrs); % way too great, and should follo SPL(band)
+        hold off;
+    end
+    
     
     si=si+NDFT; % advance 1 full frame in input data (no overlap)
     ei=si+NDFT-1;

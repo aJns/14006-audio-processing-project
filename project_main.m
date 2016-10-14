@@ -85,17 +85,17 @@ while(ei < length(x_input_signal))
     maxlevel1k = max(fft(sinusoid1k));
     SPL = 96 + 20*log10(abs(X_dft(1:NDFT/2,win)/maxlevel1k));
     
-    visualizeWindowIndex = 250;
+    visualizeWindowIndex = 1:50:1000;
     % visualize spectrum and spl
-    if win == visualizeWindowIndex
-        figure();
-        dftFrame = X_dft(:,win);
-        dftFrame = dftFrame.*conj(dftFrame);
-        dftFrame = (dftFrame/max(dftFrame)) * max(SPL);
-        plot(dftFrame);
-        hold on;
-        plot(SPL+abs(min(SPL)));
-        hold off;
+    if any(win == visualizeWindowIndex)
+%         figure(win);
+%         dftFrame = X_dft(:,win);
+%         dftFrame = dftFrame.*conj(dftFrame);
+%         dftFrame = (dftFrame/max(dftFrame)) * max(SPL);
+%         plot(dftFrame);
+%         hold on;
+%         plot(SPL+abs(min(SPL)));
+%         hold off;
     end
     
     % max SPL per band (per frame)
@@ -114,22 +114,23 @@ while(ei < length(x_input_signal))
     % threshold in quiet for center frequency f
     tiqDbForBands = zeros(1, M);
     maskThrs = zeros(M, M);
-    centerFreqs = linspace(1, testSampleRate/10^3, M);
+    maxFrequency = testSampleRate/2;
+    centerFreqs = linspace(1, maxFrequency/10^3, M);
     for i = 1: M
         f = centerFreqs(i);
         tiq = 3.64 * f.^(-0.8) - 6.5*exp(-0.6*(f-3.3).^2)+(10^-3)*f.^4;
         tiqDbForBands(i) = tiq;
         % computing masking threshold from the SPL levels
-        maskThr_current = max( conv(SPL_band(:,win),[0.05 0.6 0.3 0.05],'same') - MASK_dB , tiq' );
+        maskThr_current = max( conv(SPL_band(i,win),[0.05 0.6 0.3 0.05],'same') - MASK_dB , tiq' );
         maskThrs(i, :) = maskThr_current;
     end
     
-    if win == visualizeWindowIndex
-        figure(2);
+    if any(win == visualizeWindowIndex)
+        figure(win+1);
         plot(SPL_band(:,win));
         hold on;
         plot(tiqDbForBands);
-        plot(maskThrs); % way too great, and should follo SPL(band)
+        plot(maskThrs); % way too great, and should follow SPL(band)
         hold off;
     end
     

@@ -112,25 +112,25 @@ while(ei < length(x_input_signal))
     end
     
     % threshold in quiet for center frequency f
-    tiqDbForBands = zeros(1, M);
+    tiqDbForBands = zeros(M, M);
     maskThrs = zeros(M, M);
     maxFrequency = testSampleRate/2;
     centerFreqs = linspace(1, maxFrequency/10^3, M);
     for i = 1: M
         f = centerFreqs(i);
         tiq = 3.64 * f.^(-0.8) - 6.5*exp(-0.6*(f-3.3).^2)+(10^-3)*f.^4;
-        tiqDbForBands(i) = tiq;
-        % computing masking threshold from the SPL levels
-        maskThr_current = max( conv(SPL_band(i,win),[0.05 0.6 0.3 0.05],'same') - MASK_dB , tiq' );
-        maskThrs(i, :) = maskThr_current;
+        tiqDbForBands(i, win) = tiq;
     end
+    % computing masking threshold from the SPL levels
+    maskThr_current = max( conv(SPL_band(:,win),[0.05 0.6 0.3 0.05],'same') - MASK_dB , tiqDbForBands(:,win) );
+    maskThrs(:, win) = maskThr_current;
     
     if any(win == visualizeWindowIndex)
         figure(win+1);
         plot(SPL_band(:,win));
         hold on;
-        plot(tiqDbForBands);
-        plot(maskThrs); % way too great, and should follow SPL(band)
+        plot(tiqDbForBands(:, win));
+        plot(maskThrs(:, win)); % way too great, and should follow SPL(band)
         hold off;
     end
     

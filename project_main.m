@@ -54,14 +54,18 @@ M = mBandCount;
 x_input_signal = testSample;
 MASK_dB = 16;
 
-
-X_dft = zeros(frameSamples,floor(length(testSample)/frameSamples));
+quantizedBands = zeros(size(downsampledBands));
+frameCount = floor(length(testSample)/frameSamples);
+X_dft = zeros(frameSamples,frameCount);
 % We now have the sub band signals for M bands, given by the analysis
 % block
 si=1;ei=NDFT; % Start and End indices of input signal for each frame
 
 win=0;
 % Main loop
+th_mask = zeros(M,1);
+SMR = zeros(M, frameCount);
+matrix_of_bits = zeros(M, frameCount);
 while(ei < length(x_input_signal))
     win=win+1; % keep track of number of processed windows/frames
     % indices of datapoints of full band original signal
@@ -113,7 +117,7 @@ while(ei < length(x_input_signal))
     
     % threshold in quiet for center frequency f
     tiqDbForBands = zeros(M, M);
-    maskThrs = zeros(M, M);
+%     maskThrs = zeros(M, M);
     maxFrequency = testSampleRate/2;
     centerFreqs = linspace(1, maxFrequency/10^3, M);
     for i = 1: M
@@ -123,21 +127,58 @@ while(ei < length(x_input_signal))
     end
     % computing masking threshold from the SPL levels
     maskThr_current = max( conv(SPL_band(:,win),[0.05 0.6 0.3 0.05],'same') - MASK_dB , tiqDbForBands(:,win) );
-    maskThrs(:, win) = maskThr_current;
+%     maskThrs(:, win) = maskThr_current;
+    th_mask = (max(th_mask*0.9,maskThr_current));
+    
+    % computing signal to mask ratio SMR
+    SMR(:, win) = SPL_band(:,win) - th_mask;
+    
+    % Bit allocation
+    dividerConstant = 6.02; % dB
+    bits = 1; % Where is this value supposed to come from???
+    samples_in_subband = frameSamples/M;
+    
+    for ind_subband = 1: M
+        bits_for_subband = ceil(SMR(ind_subband, win)/(dividerConstant/bits));
+        if bits_for_subband < 0
+            bits_for_subband = 0;
+        end
+        matrix_of_bits(ind_subband,win)=bits_for_subband;%*samples_in_subband;
+    end
+    
+    % Quantization
+    for i = 1: M
+        quantizedBands(i,:) = myquantize(downsampledBands(i, :));
+    end
+    
+    % Decoder
     
     if any(win == visualizeWindowIndex)
         figure(win+1);
-        plot(SPL_band(:,win));
+        yyaxis left;
+        plot(SMR(:,win));
         hold on;
-        plot(tiqDbForBands(:, win));
-        plot(maskThrs(:, win)); % way too great, and should follow SPL(band)
+        yyaxis right;
+        plot(matrix_of_bits(:,win));
+%         plot(SPL_band(:,win));
+%         hold on;
+%         plot(tiqDbForBands(:, win));
+%         plot(maskThrs(:, win)); % way too great, and should follow SPL(band)
+%         hold off;
+%         figure(win+1);
+%         plot(maskThr_current, 'o');
+%         hold on;
+%         plot(th_mask*0.9, '+');
+%         plot(th_mask);
+%         legend('Masking Threshold of current window', 'Mask Threshold of old window * 0.9', 'Joined mask');
         hold off;
     end
-    
     
     si=si+NDFT; % advance 1 full frame in input data (no overlap)
     ei=si+NDFT-1;
 end
+
+% imagesc(SMR); colorbar; % this is fucked and doesn't look right
 % Proceed to reconstruct the signal from the quantized subband
 % signals as in exercise 4.
 

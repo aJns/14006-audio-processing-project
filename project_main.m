@@ -8,13 +8,14 @@
 
 %% Create and test Analysis-Synthesis filterbank
 mBandCount = 64;
-asFilterBank = mdct_filterbank( mBandCount);
+asFilterBank = mdct_filterbank(mBandCount);
 
 % filter into subbands
 bandFilteredSignals = zeros(mBandCount, length(testSample));
-for i = 1: length(mBandCount)
-    subFilter = asFilterBank(i);
-    bandFilteredSignals(i, :) = filter(subFilter, 1, testSample);
+for i = 1: mBandCount
+    bandFilter = asFilterBank(i,:);
+    filteredBand = filter(bandFilter, 1, testSample);
+    bandFilteredSignals(i,:) = filteredBand;
 end
 
 % downsample
@@ -25,20 +26,37 @@ for i = 1 : mBandCount
     downsampledBands(i,:) = downsampled;
 end
 
-%% inverse filter subbands and combine them to reconstruct the signal
-reconstructedSignal = zeros(size(testSample));
-for i = 1: length(mBandCount)
-    subFilter = fliplr(asFilterBank(i));
-    signalToFilter = bandFilteredSignals(i,:)';
-    filterResult = filter(1, subFilter, signalToFilter);
-    reconstructedSignal = reconstructedSignal + filterResult;
+%% interpolate and inverse filter the downsampled subbands
+%  and combine them to reconstruct the signal
+zeroFilled = zeros(1, length(testSample));
+interpolatedSignal = zeros(mBandCount, length(zeroFilled));
+for i = 1 : mBandCount
+    downsampled = downsampledBands(i,:);
+    zeroFilled(1:mBandCount:length(testSample)) = downsampled;
+    zeroFilled(numel(testSample)) = 0;
+    interpolatedSignal(i,:) = zeroFilled;
+end
+
+inverseFilteredSignal = zeros(mBandCount, length(zeroFilled));
+for i = 1: mBandCount
+    bandFilter = asFilterBank(i,:);
+    inverseFilter = fliplr(bandFilter);
+    inverseFilteredBand = filter(inverseFilter, 1, interpolatedSignal(i,:));
+    inverseFilteredSignal(i,:) = inverseFilteredBand;
+end
+
+
+reconstructedSignal = zeros(1, length(inverseFilteredBand));
+for i = 1: mBandCount
+    reconstructedSignal = reconstructedSignal + inverseFilteredSignal(i,:);
 end
 
 figure(1);
-plot(testSample);
+plot(testSample, 'DisplayName', 'Original signal');
 hold on;
-plot(reconstructedSignal);
+plot(reconstructedSignal, 'DisplayName', 'Reconstructed signal');
 hold off;
+legend('show');
 
 %% Psychoacoustic model
 % Wanted time frame length is 20ms
@@ -148,18 +166,18 @@ while(ei < length(x_input_signal))
     
     % Quantization
     for i = 1: M
-        quantizedBands(i,:) = myquantize(downsampledBands(i, :));
+        quantizedBands(i, time_index_subband) = myquantize(downsampledBands(i, time_index_subband), matrix_of_bits(i, win));
     end
     
     % Decoder
     
     if any(win == visualizeWindowIndex)
-        figure(win+1);
-        yyaxis left;
-        plot(SMR(:,win));
-        hold on;
-        yyaxis right;
-        plot(matrix_of_bits(:,win));
+%         figure(win+1);
+%         yyaxis left;
+%         plot(SMR(:,win));
+%         hold on;
+%         yyaxis right;
+%         plot(matrix_of_bits(:,win));
 %         plot(SPL_band(:,win));
 %         hold on;
 %         plot(tiqDbForBands(:, win));
@@ -171,7 +189,7 @@ while(ei < length(x_input_signal))
 %         plot(th_mask*0.9, '+');
 %         plot(th_mask);
 %         legend('Masking Threshold of current window', 'Mask Threshold of old window * 0.9', 'Joined mask');
-        hold off;
+%         hold off;
     end
     
     si=si+NDFT; % advance 1 full frame in input data (no overlap)

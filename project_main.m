@@ -156,28 +156,31 @@ while(ei < length(x_input_signal))
     bits = 1; % Where is this value supposed to come from???
     samples_in_subband = frameSamples/M;
     
+    bits_for_subband = zeros(1, M);
     for ind_subband = 1: M
-        bits_for_subband = ceil(SMR(ind_subband, win)/(dividerConstant/bits));
-        if bits_for_subband < 0
-            bits_for_subband = 0;
+        bits_for_current_subband = ceil(SMR(ind_subband, win)/(dividerConstant/bits));
+        if bits_for_current_subband < 0
+            bits_for_current_subband = 0;
         end
-        matrix_of_bits(ind_subband,win)=bits_for_subband;%*samples_in_subband;
+        bits_for_subband(ind_subband) = bits_for_current_subband;
+        sumOfBits = matrix_of_bits(ind_subband,win) + bits_for_current_subband;
+        matrix_of_bits(ind_subband,win) = sumOfBits; %bits_for_subband;%*samples_in_subband;
     end
     
     % Quantization
     for i = 1: M
-        quantizedBands(i, time_index_subband) = myquantize(downsampledBands(i, time_index_subband), matrix_of_bits(i, win));
+        quantizedBands(i, time_index_subband) = myquantize(downsampledBands(i, time_index_subband), bits_for_subband(i));
     end
     
     % Decoder
     
     if any(win == visualizeWindowIndex)
-%         figure(win+1);
-%         yyaxis left;
-%         plot(SMR(:,win));
-%         hold on;
-%         yyaxis right;
-%         plot(matrix_of_bits(:,win));
+         figure(win+1);
+         yyaxis left;
+         plot(SMR(:,win));
+         hold on;
+         yyaxis right;
+         plot(matrix_of_bits(:,win));
 %         plot(SPL_band(:,win));
 %         hold on;
 %         plot(tiqDbForBands(:, win));
@@ -189,7 +192,7 @@ while(ei < length(x_input_signal))
 %         plot(th_mask*0.9, '+');
 %         plot(th_mask);
 %         legend('Masking Threshold of current window', 'Mask Threshold of old window * 0.9', 'Joined mask');
-%         hold off;
+         hold off;
     end
     
     si=si+NDFT; % advance 1 full frame in input data (no overlap)
@@ -206,9 +209,39 @@ end
 
 
 
-%%
+%% interpolate and inverse filter the downsampled subbands
+%  and combine them to reconstruct the signal
+quantizedBands(isnan(quantizedBands))=0;
+
+zeroFilled = zeros(1, length(testSample));
+interpolatedSignal = zeros(mBandCount, length(zeroFilled));
+for i = 1 : mBandCount
+    downsampled = quantizedBands(i,:);
+    zeroFilled(1:mBandCount:length(testSample)) = downsampled;
+    zeroFilled(numel(testSample)) = 0;
+    interpolatedSignal(i,:) = zeroFilled;
+end
+
+inverseFilteredSignal = zeros(mBandCount, length(zeroFilled));
+for i = 1: mBandCount
+    bandFilter = asFilterBank(i,:);
+    inverseFilter = fliplr(bandFilter);
+    inverseFilteredBand = filter(inverseFilter, 1, interpolatedSignal(i,:));
+    inverseFilteredSignal(i,:) = inverseFilteredBand;
+end
 
 
+reconstructedSignal = zeros(1, length(inverseFilteredBand));
+for i = 1: mBandCount
+    reconstructedSignal = reconstructedSignal + inverseFilteredSignal(i,:);
+end
+
+figure(1);
+plot(testSample, 'DisplayName', 'Original signal');
+hold on;
+plot(reconstructedSignal, 'DisplayName', 'Reconstructed signal');
+hold off;
+legend('show');
 
 
 

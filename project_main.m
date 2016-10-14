@@ -163,8 +163,8 @@ while(ei < length(x_input_signal))
             bits_for_current_subband = 0;
         end
         bits_for_subband(ind_subband) = bits_for_current_subband;
-        sumOfBits = matrix_of_bits(ind_subband,win) + bits_for_current_subband;
-        matrix_of_bits(ind_subband,win) = sumOfBits; %bits_for_subband;%*samples_in_subband;
+%         sumOfBits = matrix_of_bits(ind_subband,win) + bits_for_current_subband;
+        matrix_of_bits(ind_subband,win) = bits_for_current_subband*samples_in_subband;
     end
     
     % Quantization
@@ -236,14 +236,17 @@ for i = 1: mBandCount
     reconstructedSignal = reconstructedSignal + inverseFilteredSignal(i,:);
 end
 
-figure(1);
+phaseDiff = M*2;
+
+figure(2);
 plot(testSample, 'DisplayName', 'Original signal');
 hold on;
-plot(reconstructedSignal, 'DisplayName', 'Reconstructed signal');
+plot(reconstructedSignal(phaseDiff:end), 'DisplayName', 'Reconstructed signal');
 hold off;
 legend('show');
 
-
+% avg bits/sample (bitrate?)
+averageBits = sum(matrix_of_bits(:))/length(testSample)
 
 
 

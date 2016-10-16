@@ -1,7 +1,7 @@
 %% Project header
 % 14006 Audio Processing project work 2016
 % Jonas Nikula  240497
-% Vili Saura    #opnum
+% Vili Saura    240264
 
 %% Load project test sample
 [testSample, testSampleRate] = audioread('project_test1.wav');

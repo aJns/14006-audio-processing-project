@@ -10,46 +10,12 @@
 mBandCount = 64;
 asFilterBank = mdct_filterbank(mBandCount);
 
-% filter into subbands
-bandFilteredSignals = zeros(mBandCount, length(testSample));
-for i = 1: mBandCount
-    bandFilter = asFilterBank(i,:);
-    filteredBand = filter(bandFilter, 1, testSample);
-    bandFilteredSignals(i,:) = filteredBand;
-end
-
-% downsample
-downsampledBands = zeros(mBandCount, ceil(length(testSample)/mBandCount));
-for i = 1 : mBandCount
-    filteredBand = bandFilteredSignals(i,:);
-    downsampled = filteredBand(1:mBandCount:end);
-    downsampledBands(i,:) = downsampled;
-end
+downsampledBands = divide_into_bands(testSample, mBandCount, asFilterBank);
 
 %% interpolate and inverse filter the downsampled subbands
 %  and combine them to reconstruct the signal
-zeroFilled = zeros(1, length(testSample));
-interpolatedSignal = zeros(mBandCount, length(zeroFilled));
-for i = 1 : mBandCount
-    downsampled = downsampledBands(i,:);
-    zeroFilled(1:mBandCount:length(testSample)) = downsampled;
-    zeroFilled(numel(testSample)) = 0;
-    interpolatedSignal(i,:) = zeroFilled;
-end
 
-inverseFilteredSignal = zeros(mBandCount, length(zeroFilled));
-for i = 1: mBandCount
-    bandFilter = asFilterBank(i,:);
-    inverseFilter = fliplr(bandFilter);
-    inverseFilteredBand = filter(inverseFilter, 1, interpolatedSignal(i,:));
-    inverseFilteredSignal(i,:) = inverseFilteredBand;
-end
-
-
-reconstructedSignal = zeros(1, length(inverseFilteredBand));
-for i = 1: mBandCount
-    reconstructedSignal = reconstructedSignal + inverseFilteredSignal(i,:);
-end
+reconstructedSignal = reconstruct_from_bands(downsampledBands, length(testSample), asFilterBank);
 
 figure(1);
 plot(testSample, 'DisplayName', 'Original signal');
@@ -215,40 +181,18 @@ imagesc(flipud(SMR)); colormap jet; colorbar; % this is fucked and doesn't look 
 %  and combine them to reconstruct the signal
 quantizedBands(isnan(quantizedBands))=0;
 
-zeroFilled = zeros(1, length(testSample));
-interpolatedSignal = zeros(mBandCount, length(zeroFilled));
-for i = 1 : mBandCount
-    downsampled = quantizedBands(i,:);
-    zeroFilled(1:mBandCount:length(testSample)) = downsampled;
-    zeroFilled(numel(testSample)) = 0;
-    interpolatedSignal(i,:) = zeroFilled;
-end
-
-inverseFilteredSignal = zeros(mBandCount, length(zeroFilled));
-for i = 1: mBandCount
-    bandFilter = asFilterBank(i,:);
-    inverseFilter = fliplr(bandFilter);
-    inverseFilteredBand = filter(inverseFilter, 1, interpolatedSignal(i,:));
-    inverseFilteredSignal(i,:) = inverseFilteredBand;
-end
-
-
-reconstructedSignal = zeros(1, length(inverseFilteredBand));
-for i = 1: mBandCount
-    reconstructedSignal = reconstructedSignal + inverseFilteredSignal(i,:);
-end
-
-phaseDiff = M*2;
+reconstructedSignal = reconstruct_from_bands(quantizedBands, length(testSample), asFilterBank);
 
 figure(2);
 plot(testSample, 'DisplayName', 'Original signal');
 hold on;
-plot(reconstructedSignal(phaseDiff:end), 'DisplayName', 'Reconstructed signal');
+plot(reconstructedSignal, 'DisplayName', 'Reconstructed signal');
 hold off;
 legend('show');
 
 % avg bits/sample (bitrate?)
-averageBits = sum(matrix_of_bits(:))/length(testSample)
+averageBits = sum(matrix_of_bits(:))/length(testSample);
+disp(['Average bitrate: ' num2str(averageBits) ' bits per sample']);
 
 
 

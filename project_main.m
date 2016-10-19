@@ -199,7 +199,9 @@ while(ei < length(x_input_signal))
     ei=si+NDFT-1;
 end
 
-% imagesc(SMR); colorbar; % this is fucked and doesn't look right
+%% SMR visualization
+SMR(SMR<0) = 0;
+imagesc(flipud(SMR)); colormap jet; colorbar; % this is fucked and doesn't look right
 % Proceed to reconstruct the signal from the quantized subband
 % signals as in exercise 4.
 

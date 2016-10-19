@@ -167,14 +167,7 @@ end
 
 %% SMR visualization
 SMR(SMR<0) = 0;
-imagesc(flipud(SMR)); colormap jet; colorbar; % this is fucked and doesn't look right
-% Proceed to reconstruct the signal from the quantized subband
-% signals as in exercise 4.
-
-
-
-
-
+imagesc(flipud(SMR)); colormap jet; colorbar;
 
 
 %% interpolate and inverse filter the downsampled subbands

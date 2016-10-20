@@ -5,6 +5,7 @@ maskDb = 16;
 
 [reconstructedSignal, averageBits] = dct_filterbank_psycho(testSample, testSampleRate, bands, maskDb);
 
+cd(fullfile('palautettavat koodit'));
 figure(1);
 plot(testSample, 'DisplayName', 'Original signal');
 hold on;

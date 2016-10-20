@@ -45,6 +45,10 @@ X_dft = zeros(frameSamples,frameCount);
 % block
 si=1;ei=NDFT; % Start and End indices of input signal for each frame
 
+
+visualizeWindowIndex = 317; %randi(500);
+disp(['Visualized window index ' num2str(visualizeWindowIndex)]);
+
 win=0;
 % Main loop
 th_mask = zeros(M,1);
@@ -73,17 +77,16 @@ while(ei < length(x_input_signal))
     maxlevel1k = max(fft(sinusoid1k));
     SPL = 96 + 20*log10(abs(X_dft(1:NDFT/2,win)/maxlevel1k));
     
-    visualizeWindowIndex = 1:50:1000;
     % visualize spectrum and spl
     if any(win == visualizeWindowIndex)
-%         figure(win);
-%         dftFrame = X_dft(:,win);
-%         dftFrame = dftFrame.*conj(dftFrame);
-%         dftFrame = (dftFrame/max(dftFrame)) * max(SPL);
-%         plot(dftFrame);
-%         hold on;
-%         plot(SPL+abs(min(SPL)));
-%         hold off;
+         figure(2);
+         dftFrame = X_dft(:,win);
+         dftFrame = dftFrame.*conj(dftFrame);
+         dftFrame = (dftFrame/max(dftFrame)) * max(SPL);
+         plot(dftFrame);
+         hold on;
+         plot(SPL+abs(min(SPL)));
+         hold off;
     end
     
     % max SPL per band (per frame)
@@ -141,23 +144,25 @@ while(ei < length(x_input_signal))
     % Decoder
     
     if any(win == visualizeWindowIndex)
-         figure(win+1);
+         figure(3);
          yyaxis left;
          plot(SMR(:,win));
          hold on;
          yyaxis right;
          plot(matrix_of_bits(:,win));
-%         plot(SPL_band(:,win));
-%         hold on;
-%         plot(tiqDbForBands(:, win));
-%         plot(maskThrs(:, win)); % way too great, and should follow SPL(band)
-%         hold off;
-%         figure(win+1);
-%         plot(maskThr_current, 'o');
-%         hold on;
-%         plot(th_mask*0.9, '+');
-%         plot(th_mask);
-%         legend('Masking Threshold of current window', 'Mask Threshold of old window * 0.9', 'Joined mask');
+%          plot(SPL_band(:,win));
+         hold off;
+         figure(4);
+         hold on;
+         plot(tiqDbForBands(:, win));
+         plot(maskThr_current); % way too great, and should follow SPL(band)
+         hold off;
+         figure(5);
+         plot(maskThr_current, 'o');
+         hold on;
+         plot(th_mask*0.9, '+');
+         plot(th_mask);
+         legend('Masking Threshold of current window', 'Mask Threshold of old window * 0.9', 'Joined mask');
          hold off;
     end
     
@@ -176,7 +181,7 @@ quantizedBands(isnan(quantizedBands))=0;
 
 reconstructedSignal = reconstruct_from_bands(quantizedBands, length(testSample), asFilterBank);
 
-figure(2);
+figure(6);
 plot(testSample, 'DisplayName', 'Original signal');
 hold on;
 plot(reconstructedSignal, 'DisplayName', 'Reconstructed signal');

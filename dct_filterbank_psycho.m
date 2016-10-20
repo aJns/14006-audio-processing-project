@@ -1,3 +1,8 @@
+%% Project header
+% 14006 Audio Processing project work 2016
+% Jonas Nikula  240497
+% Vili Saura    240264
+
 function [y, bitrate] = dct_filterbank_psycho(x_input, fs, M, MASK_dB)
 %% Create and test Analysis-Synthesis filterbank
 mBandCount = M;

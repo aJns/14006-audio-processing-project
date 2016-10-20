@@ -1,3 +1,8 @@
+%% Project header
+% 14006 Audio Processing project work 2016
+% Jonas Nikula  240497
+% Vili Saura    240264
+
 function reconstruction = reconstruct_from_bands(bands, signal_length, filter_bank, account_for_phase_diff)
 
 [bandCount, ~] = size(bands);

@@ -13,3 +13,7 @@ hold off;
 legend('show');
 
 disp(['Average bitrate: ' num2str(averageBits) ' bits per sample']);
+
+%% without model
+bits = 2;
+sdfhk = myquantize(testSample, bits);

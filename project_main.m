@@ -32,6 +32,7 @@ powerOf2 = ceil(log2(frameSamples));
 frameSamples = 2^powerOf2;
 
 
+
 %% Based on project assigment example loop
 NDFT = frameSamples;
 M = mBandCount;
@@ -45,9 +46,16 @@ X_dft = zeros(frameSamples,frameCount);
 % block
 si=1;ei=NDFT; % Start and End indices of input signal for each frame
 
+% figure handles
+figSPLAndSpectrum = figure(2);
+figBitAllocationAndSMR = figure(3);
+figMaskAndTIQ = figure(4);
+figJoinedThresholds = figure(5);
+figSMR = figure(6);
 
 visualizeWindowIndex = 317; %randi(500);
 disp(['Visualized window index ' num2str(visualizeWindowIndex)]);
+maxFrequency = testSampleRate/2;
 
 win=0;
 % Main loop
@@ -79,14 +87,22 @@ while(ei < length(x_input_signal))
     
     % visualize spectrum and spl
     if any(win == visualizeWindowIndex)
-         figure(2);
+         figure(figSPLAndSpectrum);
+         clf;
          dftFrame = X_dft(:,win);
          dftFrame = dftFrame.*conj(dftFrame);
          dftFrame = (dftFrame/max(dftFrame)) * max(SPL);
-         plot(dftFrame);
+         spectrumData = dftFrame;
+         spectrumXAxis = linspace(1, maxFrequency, length(spectrumData));
+         plot(spectrumXAxis, spectrumData, 'DisplayName', 'Magnitude Spectrum');
          hold on;
-         plot(SPL+abs(min(SPL)));
+         yyaxis right;
+         SPLData = SPL;
+         SPLXAxis = linspace(1, maxFrequency, length(SPLData));
+         plot(SPLXAxis, SPLData, 'DisplayName', 'SPL (dB)');
          hold off;
+         legend('show');
+         xlabel('Frequency (Hz)');
     end
     
     % max SPL per band (per frame)
@@ -115,6 +131,7 @@ while(ei < length(x_input_signal))
     % computing masking threshold from the SPL levels
     maskThr_current = max( conv(SPL_band(:,win),[0.05 0.6 0.3 0.05],'same') - MASK_dB , tiqDbForBands(:,win) );
 %     maskThrs(:, win) = maskThr_current;
+    th_mask_old = th_mask;
     th_mask = (max(th_mask*0.9,maskThr_current));
     
     % computing signal to mask ratio SMR
@@ -144,25 +161,39 @@ while(ei < length(x_input_signal))
     % Decoder
     
     if any(win == visualizeWindowIndex)
-         figure(3);
+         figure(figBitAllocationAndSMR);
+         clf;
          yyaxis left;
-         plot(SMR(:,win));
+         plot(SMR(:,win), 'DisplayName', 'SMR (dB)');
          hold on;
          yyaxis right;
-         plot(matrix_of_bits(:,win));
-%          plot(SPL_band(:,win));
+         plot(matrix_of_bits(:,win), 'DisplayName', 'Bits Allocated');
          hold off;
-         figure(4);
+         legend('show');
+         xlabel('Band Index');
+         
+         
+         figure(figMaskAndTIQ);
+         clf;
          hold on;
-         plot(tiqDbForBands(:, win));
-         plot(maskThr_current); % way too great, and should follow SPL(band)
+         plot(SPL_band(:,win), 'DisplayName', 'SPL(band)');
+         plot(tiqDbForBands(:, win), 'DisplayName', 'Threshold in Quiet');
+         plot(maskThr_current, 'DisplayName', 'Masking Threshold');
          hold off;
-         figure(5);
+         ylabel('(in dB)');
+         xlabel('Band Index');
+         legend('show');
+         
+         
+         figure(figJoinedThresholds);
+         clf;
          plot(maskThr_current, 'o');
          hold on;
-         plot(th_mask*0.9, '+');
+         plot(th_mask_old*0.9, '+');
          plot(th_mask);
          legend('Masking Threshold of current window', 'Mask Threshold of old window * 0.9', 'Joined mask');
+         ylabel('Amplitude (dB)');
+         xlabel('sub-band index');
          hold off;
     end
     
@@ -171,8 +202,19 @@ while(ei < length(x_input_signal))
 end
 
 %% SMR visualization
+figure(figSMR);
+sampleLengthSeconds = length(testSample)/testSampleRate;
+
+[smrYElems, smrXElems] = size(SMR);
+
+SMRXAxis = linspace(0, sampleLengthSeconds, smrXElems);
+SMRYAxis = linspace(0, maxFrequency, smrYElems);
+
+clf;
 SMR(SMR<0) = 0;
-imagesc(flipud(SMR)); colormap jet; colorbar;
+imagesc(SMRXAxis, SMRYAxis, SMR); colormap jet; colorbar; set(gca,'YDir','normal');
+xlabel('Time (s)');
+ylabel('Frequency (Hz)');
 
 
 %% interpolate and inverse filter the downsampled subbands
@@ -181,7 +223,7 @@ quantizedBands(isnan(quantizedBands))=0;
 
 reconstructedSignal = reconstruct_from_bands(quantizedBands, length(testSample), asFilterBank);
 
-figure(6);
+figure(7);
 plot(testSample, 'DisplayName', 'Original signal');
 hold on;
 plot(reconstructedSignal, 'DisplayName', 'Reconstructed signal');
@@ -193,6 +235,14 @@ averageBits = sum(matrix_of_bits(:))/length(testSample);
 disp(['Average bitrate: ' num2str(averageBits) ' bits per sample']);
 
 
+%% save figures
+oldFolder = cd('figures');
+print(figBitAllocationAndSMR, 'BitAllocationAndSMR', '-dpng')
+print(figJoinedThresholds, 'JoinedThresholds', '-dpng')
+print(figMaskAndTIQ, 'MaskAndTIQ', '-dpng')
+print(figSMR, 'SMR', '-dpng')
+print(figSPLAndSpectrum, 'SPLAndSpectrum', '-dpng')
+cd(oldFolder);
 
 
 
